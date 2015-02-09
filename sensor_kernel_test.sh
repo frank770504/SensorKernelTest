@@ -45,7 +45,7 @@ se_log_motion_sensors()
 	for _dev in $_motionSensors
 	do
 		echo "$_dev:" >> resullt.log
-		#adb shell "sensors $_dve start" >> result.log $
+		adb shell "$BIN_NAME $_dve start" >> result.log $
 	        echo "$!" > temp.pid
 		sleep 5
 		kill -INT $(cat temp.pid) 2>/dev/null
