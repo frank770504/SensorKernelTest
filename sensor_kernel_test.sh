@@ -1,63 +1,51 @@
-
 #adb root and remount the device
 device_root()
 {
-	adb wait-for-device
-	adb root
-	adb wait-for-device
-	adb remount
-	adb wait-for-device
-	echo "adb root and remount ok!!!"
+        adb wait-for-device
+        adb root
+        adb wait-for-device
+        adb remount
+        adb wait-for-device
+        echo "adb root and remount ok!!!"
 }
 
+_regulator="8226_l19 \
+            8226_lvs1"
 
-SENSORS_PATH="c:/Users/Frank/Documents/W2/Tool/PNI/"
+checkc_regulator()
+{
+	for _reg in $_regulator
+	do
+		echo "check regulator: $_reg"
+		_enable=$( adb shell "cat d/regulator/$_reg/enable" | tr -d '\r')
+		if [ $_enable == "1" ]; then
+			echo "$_reg is endble"
+		else
+			echo "$_reg is disdble"
+		fi
+	done
+}
+
 PUSH_PATH="system/bin"
-BIN_NAME="sensors"
+BIN_NAME=$1
 
 #push binary
 push_bin()
 {
 #$1 the binary name
-#$2 the binary path
-#$3 the push path
+#$2 the push path
 
-	adb push $2/$1 $3
-	adb shell "chmod 755 $3/$1"
+        adb push ./$1 $2
+        adb shell "chmod 755 $2/$1"
 }
 
-#list all the sensor
-#TODO file analysis
-se_list()
+
+check_sensors_addr_on_bus()
 {
-	adb shell "sensors list" > List.log
-	#analyze files
+
 }
 
-
-#test motion sensors
-se_log_motion_sensors()
-{
-	_motionSensors="accel mag gyro"
-
-	rm resullt.log 2>/dev/null
-
-	for _dev in $_motionSensors
-	do
-		echo "$_dev:" >> resullt.log
-		adb shell "$BIN_NAME $_dve start" >> result.log $
-	        echo "$!" > temp.pid
-		sleep 5
-		kill -INT $(cat temp.pid) 2>/dev/null
-		rm temp.pid
-	done
-}
-
-# script start here
 device_root
-push_bin $BIN_NAME $SENSORS_PATH $PUSH_PATH
-se_list
-se_log_motion_sensors
-
-
+echo "\n"
+checkc_regulator
 
