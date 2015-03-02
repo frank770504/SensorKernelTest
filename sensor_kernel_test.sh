@@ -14,7 +14,7 @@ _regulator="8226_l19 \
 
 checkc_regulator()
 {
-	echo "$0 ----------"
+	echo "${FUNCNAME} ----------"
 	for _reg in $_regulator
 	do
 		echo "check regulator: $_reg"
@@ -43,7 +43,7 @@ push_bin()
 
 push_i2c_check_binary()
 {
-	echo "$0 ----------"
+	echo "${FUNCNAME} ----------"
 	push_bin "i2c-util" "." $_PUSH_PATH
 	push_bin "i2cdetect" "i2ctool" "$_PUSH_PATH"
 	push_bin "i2cdump" "i2ctool" "$_PUSH_PATH"
@@ -53,9 +53,9 @@ push_i2c_check_binary()
 
 check_sensors_on_bus()
 {
-	echo "$0 ----------"
 #$1 is the i2c bus bunber in the platform
 #make SENtral get into passthrough mode first
+	echo "${FUNCNAME} ----------"
 	adb shell "rmmod em718x" #TODO what if SENtral init is failled
 	adb shell "insmod system/lib/modules/em718x.ko SENstr=\"passthrough\""
 	echo "all the device on i2c-$1"
@@ -65,9 +65,80 @@ check_sensors_on_bus()
 	adb shell "insmod system/lib/modules/em718x.ko"
 }
 
+declare -a _Strform
+
+get_sensor_list() #TODO
+{
+        echo "${FUNCNAME} ----------"
+        _eveList=$(adb shell "cd /dev/input; ls event*"  | tr -d '\r')
+        _ind=0
+        for dev in $_eveList; do
+               _event="/sys/class/input/$dev"
+                _inputdev="$_event/device"
+                _hwdev="$_inputdev/device"
+                _sensors="$_hwdev/sensors"
+
+                _devname=$(adb shell "cat $_hwdev/name  2>/dev/null"  | tr -d '\r')
+               #echo "event: $_event dev: $_devname"
+
+                if [ "$_devname" == "em7180" ]; then
+                        _sensorname=$( adb shell "cat $_inputdev/name 2>/dev/null"  | tr -d '\r')
+                        _sensortype=$( adb shell "cat $_inputdev/phys 2>/dev/null"  | tr -d '\r' | awk -F':' '{     print $2; }' )
+
+                        #echo "sensorname: $_sensorname"
+                        #echo "sensortype: $_sensortype"
+                        _status=$( adb shell "cat $_inputdev/sensor/enable 2>/dev/null"  | tr -d '\r')
+                        echo "$_sensortype:$_sensorname           $dev           status:$_status"
+                        temp=$(printf "%s %s %s %s " "$_sensortype" "$_sensorname" "$dev" "$_status")
+                        _Strform=("${_Strform[@]}" "$temp")
+                        #echo "${#_Strform[@]}"
+                fi
+        done
+
+        echo "test"
+        _end=$( printf "%d" ${#_Strform[@]} )
+        _end="$[$_end-1]"
+        if [ "$_Strform" != "" ]; then
+                for _ind in $( eval echo {1..$_end} ); do
+                        echo ${_Strform[$_ind]}
+                done
+        fi
+}
+
+
+
+do_sensor_cmd()
+{
+        case $1 in
+                "en")
+                adb shell "echo 1 >> \"/sys/class/input/input$2/sensor/enable\""
+                ;;
+                "dis")
+                adb shell "echo 0 >> \"/sys/class/input/input$2/sensor/enable\""
+                ;;
+                "get")
+                adb shell "echo 1 >> \"/sys/class/input/input$2/sensor/enable\""
+                adb shell "getevent \"/dev/input/event$2\""
+                ;;
+                *)
+                get_sensor_list
+                ;;
+        esac
+}
+
+
+#get_motion_sebsor_event() #TODO
+#{
+
+#}
+
+
 
 device_root
 echo ""
 checkc_regulator
 push_i2c_check_binary
 check_sensors_on_bus 2
+echo "device reboot"
+device_root
+get_sensor_list
