@@ -6,7 +6,7 @@ device_root()
         adb wait-for-device
         adb remount
         adb wait-for-device
-        echo "adb root and remount ok!!!"
+        #echo "adb root and remount ok!!!"
 }
 
 _regulator="8226_l19 \
@@ -57,7 +57,7 @@ check_sensors_on_bus()
 #make SENtral get into passthrough mode first
 	echo "${FUNCNAME} ----------"
 	adb shell "rmmod em718x" #TODO what if SENtral init is failled
-	adb shell "insmod system/lib/modules/em718x.ko SENstr=\"passthrough\""
+	adb shell "insmod system/lib/modules/em718x.ko passthrough=1"
 	echo "all the device on i2c-$1"
 	adb shell "i2cdetect -y -r $1"
 	#TODO do other things like get sensors data direct from i2c
@@ -88,24 +88,27 @@ get_sensor_list() #TODO
                         #echo "sensorname: $_sensorname"
                         #echo "sensortype: $_sensortype"
                         _status=$( adb shell "cat $_inputdev/sensor/enable 2>/dev/null"  | tr -d '\r')
-                        echo "$_sensortype:$_sensorname           $dev           status:$_status"
-                        temp=$(printf "%s %s %s %s " "$_sensortype" "$_sensorname" "$dev" "$_status")
+			show=$( printf "%5s %7s status:%s Name:%s" "$_sensortype" "$dev" "$_status" "$_sensorname")
+                        #echo "$_sensortype:$_sensorname           $dev           status:$_status"
+			echo "$show"
+			_sensnum=$( echo "$dev" | tr -d event )
+                        temp=$(printf "%s %s %s %s " "$_sensortype" "$_sensnum" "$_status" "$_sensorname")
                         _Strform=("${_Strform[@]}" "$temp")
                         #echo "${#_Strform[@]}"
                 fi
         done
 
-        echo "test"
-        _end=$( printf "%d" ${#_Strform[@]} )
-        _end="$[$_end-1]"
-        if [ "$_Strform" != "" ]; then
-                for _ind in $( eval echo {1..$_end} ); do
-                        echo ${_Strform[$_ind]}
-                done
-        fi
+      #  echo "test"
+      #  _end=$( printf "%d" ${#_Strform[@]} )
+      #  _end="$[$_end-1]"
+      #  if [ "$_Strform" != "" ]; then
+      #          for _ind in $( eval echo {1..$_end} ); do
+      #                  echo ${_Strform[$_ind]}
+      #          done
+      #  fi
 }
 
-
+_LOGFILE="res.log"
 
 do_sensor_cmd()
 {
@@ -118,7 +121,15 @@ do_sensor_cmd()
                 ;;
                 "get")
                 adb shell "echo 1 >> \"/sys/class/input/input$2/sensor/enable\""
-                adb shell "getevent \"/dev/input/event$2\""
+				sleep $3
+                adb shell "getevent \"/dev/input/event$2\""  >> temp.log &
+				echo "$!" > temp.pid
+				sleep "$[$4/10]"
+				kill -INT $(cat temp.pid) 2>/dev/null
+				rm temp.pid
+                ;;
+                "st")
+                adb shell "echo $3 >> \"/sys/class/input/input$2/sensor/enable\""
                 ;;
                 *)
                 get_sensor_list
@@ -127,18 +138,95 @@ do_sensor_cmd()
 }
 
 
-#get_motion_sebsor_event() #TODO
-#{
+get_sensor_event() #TODO
+{
+        _end=$( printf "%d" ${#_Strform[@]} )
+        _end="$[$_end-1]"
+        if [ "$_Strform" != "" ]; then
+                for _ind in $( eval echo {0..$_end} ); do
+			_list=${_Strform[$_ind]}
+			declare -a _arrlist
+			unset $_arrlist
+			for _i in $_list; do
+				_arrlist=("${_arrlist[@]}" "$_i")
+			done
+			_en=$( printf "%d" ${#_arrlist[@]} )
+			_en="$[$_en-1]"
+		case ${_arrlist[0]} in
+			cus*)
+				#echo "no"
+			;;
+			temp|humid|baro )
+				#echo ${_arrlist[0]}
+				_temp="+++++++++"
+				for _i in $(eval echo {3..$_en} ); do
+					_temp+=" "
+					_temp+=${_arrlist[$_i]}
+				done
+				echo $_temp >> temp.log
+				#echo ${_arrlist[1]}
+				#do_sensor_cmd get $(printf "%d" ${_arrlist[1]})
+				do_sensor_cmd get $(printf "%d" ${_arrlist[1]}) 1 20
+				do_sensor_cmd st ${_arrlist[1]} ${_arrlist[2]}
+			;;
+			*)
+				#echo ${_arrlist[0]}
+				_temp="+++++++++"
+				for _i in $(eval echo {3..$_en} ); do
+					_temp+=" "
+					_temp+=${_arrlist[$_i]}
+				done
+				echo $_temp >> temp.log
+				#echo ${_arrlist[1]}
+				#do_sensor_cmd get $(printf "%d" ${_arrlist[1]})
+				do_sensor_cmd get $(printf "%d" ${_arrlist[1]}) 1 10
+				do_sensor_cmd st ${_arrlist[1]} ${_arrlist[2]}
+			;;
+		esac
+			for _j in $(eval echo {0..$_en}); do
+				unset _arrlist[$_j]
+			done
+                done
+        fi
+	sed -e "s/^M//" temp.log > temp1.log; sed -e "s/^M//" temp1.log > $_LOGFILE; rm temp*
 
-#}
+}
 
+wait_for_sensorservice()
+{
+	_DET=""
+	unset $_DET
+	while [ -z "$_DET"]; do
+		_DET=$( adb shell "service list | grep sensorservice" | tr -d '\r' )
+		#echo "loop:" "$_DET"
+	done
 
+}
 
+print_sensor_log()
+{
+	_line=$(cat $1 | grep -n +++++ | awk -F: '{print $1}')
+
+	for _n in $_line; do
+	        for _i in {0..4}; do
+	                _num=$[$_n+$_i]
+	                sed -n "${_num}p" $1
+
+	        done
+	done
+}
+
+adb reboot
 device_root
-echo ""
+#echo ""
 checkc_regulator
 push_i2c_check_binary
 check_sensors_on_bus 2
 echo "device reboot"
+adb reboot
 device_root
+wait_for_sensorservice 2>/dev/null
+#sleep 5
 get_sensor_list
+get_sensor_event
+print_sensor_log $_LOGFILE
