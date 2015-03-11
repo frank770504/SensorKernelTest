@@ -1,0 +1,107 @@
+1. The test tool is used to test the sensors and the sensor hub, SENtral.
+2. Please move the whole directory to the computer that can use adb to connect your machine.
+3. The test will test the below parts:
+	3.1 regulator
+	3.1.1 log
+		check regulator: 8226_l19
+		8226_l19 is endble
+		check regulator: 8226_lvs1
+		8226_lvs1 is endble
+	3.2 i2c status
+	3.2.1 log
+		all the device on i2c-2
+		     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+		00:          -- -- -- -- -- -- -- -- -- -- -- -- --
+		10: 10 -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+		20: -- -- -- -- -- -- -- -- UU -- -- -- -- -- -- --
+		30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+		40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+		50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+		60: -- -- -- -- -- -- -- -- 68 -- -- -- -- -- -- --
+		70: -- -- -- -- -- -- 76 --
+	3.3 sensor lisensor_list
+	3.3.1 log
+		cust1 event10 status:0 Name:SENtral AnyMotion
+		cust2 event11 status:0 Name:SENtral Tilt
+		accel  event2 status:0 Name:SENtral Accelerometer
+		 quat  event3 status:0 Name:SENtral Quaternion
+		  mag  event4 status:0 Name:SENtral Magnetometer
+		 gyro  event5 status:0 Name:SENtral Gyroscope
+		 temp  event6 status:0 Name:SENtral Temperature Sensor
+		 baro  event7 status:0 Name:SENtral Barometer
+		humid  event8 status:0 Name:SENtral Humidity Sensor
+		cust0  event9 status:0 Name:SENtral Step Counter
+	3.4 sensor evnet data
+	3.4.1 log
+		+++++++++ SENtral Accelerometer
+		0004 0000 00b1ffd7
+		0004 0001 fffff81b
+		0004 0004 00051060
+		0004 0007 90ac3263
+		0000 0000 00000000
+		0004 0000 00b1ffd6
+		0004 0001 fffff81c
+		0004 0004 00051060
+		+++++++++ SENtral Quaternion
+		0004 0000 bc2a9292
+		0004 0001 bcea15b1
+		0004 0002 3f55a179
+		0004 0003 3f0cd84d
+		0004 0004 00051060
+		0004 0007 90d15817
+		0000 0000 00000000
+		0004 0000 bc334393
+		+++++++++ SENtral Magnetometer
+		0004 0000 ff1e0226
+		0004 0001 ffffff15
+		0004 0004 00051060
+		0004 0007 90f98246
+		0000 0000 00000000
+		0004 0000 ff1e023a
+		0004 0001 ffffff28
+		0004 0004 00051060
+		+++++++++ SENtral Gyroscope
+		0004 0000 00000000
+		0004 0001 00000000
+		0004 0004 00051060
+		0004 0007 911f8c8c
+		0000 0000 00000000
+		0004 0000 00000000
+		0004 0001 00000000
+		0004 0004 00051060
+		+++++++++ SENtral Temperature Sensor
+		0004 0000 0000089a
+		0004 0004 00051060
+		0004 0007 9145cf85
+		0000 0000 00000000
+		0004 0000 00001074
+		0004 0004 00051060
+		0004 0007 9154ea98
+		0000 0000 00000000
+		+++++++++ SENtral Barometer
+		0004 0000 000054e8
+		0004 0004 00051060
+		0004 0007 918a962d
+		0000 0000 00000000
+		0004 0000 000054e6
+		0004 0004 00051060
+		0004 0007 9199b0db
+		0000 0000 00000000
+		+++++++++ SENtral Humidity Sensor
+		0004 0000 00000bb8
+		0004 0004 00051060
+		0004 0007 91b0ca59
+		0000 0000 00000000
+		0004 0000 00000c1c
+		0004 0004 00051060
+		0004 0007 91bfe489
+		0000 0000 00000000
+4. The variable in the sensor_kernel_test.sh
+	4.1 _regulator: the rehulator list.
+		It will check all the regulater status in the list.
+	4.2 _LOGFILE: the file name for the sensor event output.
+	4.3 the argument for "do_sensor_cmd get"
+		e.g do_sensor_cmd get $(printf "%d" ${_arrlist[1]}) 1 20
+		$(printf "%d" ${_arrlist[1]}): the event nummber
+		1:  the sleep time from setting enable to getevent. unit: sec
+		10: the time for getevent. unit: 0.1 sec

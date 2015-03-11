@@ -10,7 +10,8 @@ device_root()
 }
 
 _regulator="8226_l19 \
-            8226_lvs1"
+            8226_lvs1 \
+            8226_l28"
 
 checkc_regulator()
 {
